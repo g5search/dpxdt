@@ -1,0 +1,222 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: dpxdt-rails-servers
+  labels:
+    app: dpxdt
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "75%"
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: dpxdt
+      tier: web-app
+  template:
+    metadata:
+      name: rails-server
+      labels:
+        app: dpxdt
+        tier: web-app
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-service-account
+      containers:
+        - name: rails-server
+          image: g5search/dpxdt:v2.19.2
+          imagePullPolicy: Always
+          command: [ "bundle", "exec", "puma", "-C", "config/puma.rb" ]
+          resources:
+            requests:
+              memory: "3000Mi"
+              cpu: "500m"
+            limits:
+              memory: "3584Mi"
+              cpu: "1000m"
+          env:
+            # tier-specific
+            - name: CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: dpxdt
+                  key: puma-concurrency
+            # app-specific
+            - name: NEW_RELIC_APP_NAME
+              value: Dashboard
+            - name: TZ
+              value: America/Los_Angeles
+            # namespace-specific
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GOSQUARED_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: gosquared-api-key
+            - name: HONEYBADGER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: honeybadger-api-key
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: new-relic-license-key
+            - name: CENTRAL_QUEUES_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: central-queues
+                  key: redis-url
+            - name: G5_AUTH_ALLOW_PASSWORD_CREDENTIALS
+              value: "true"
+            - name: G5_AUTH_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: g5-auth
+                  key: endpoint
+            - name: G5_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: g5-auth
+                  key: service-account-username
+            - name: G5_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: g5-auth
+                  key: service-account-password
+            - name: G5_AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: g5-auth-client-id
+            - name: G5_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: g5-auth-client-secret
+            - name: G5_AUTH_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: g5-auth-redirect-uri
+            - name: GA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: ga-api-key
+            - name: UNIVERSAL_ANALYTICS_ACCOUNT
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: universal-analytics-account
+            - name: CORE_API_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: core-api
+                  key: auth-token
+            - name: CORE_API_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: core-api
+                  key: endpoint
+            - name: CORE_API_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: core-api
+                  key: username
+            - name: CXM_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dpxdt
+                  key: cxm-host
+            - name: REPUTATION_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dpxdt
+                  key: reputation-host
+            - name: DSH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: dpxdt
+                  key: dsh-url
+            - name: DEVISE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: devise-secret-key
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: secret-key-base
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: database-host
+            - name: DATABASE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: database-port
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: database-name
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: database-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: database-password
+        - name: nginx-proxy
+          image: g5search/nginx-ssl-proxy:v1.0.1-rc.1
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+          readinessProbe:
+            httpGet:
+              path: /okcomputer
+              port: 80
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /okcomputer
+              port: 80
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 5
+          env:
+            - name: ENABLE_SSL
+              value: "true"
+            - name: TARGET_SERVICE
+              value: 127.0.0.1:3000
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "nginx", "-s", "quit" ]
+          volumeMounts:
+          - name: ssl-secrets
+            mountPath: /etc/secrets
+            readOnly: true
+      volumes:
+        - name: ssl-secrets
+          secret:
+            secretName: g5marketingcloud-ssl-certs
