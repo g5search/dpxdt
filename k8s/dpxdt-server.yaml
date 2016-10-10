@@ -29,13 +29,12 @@ spec:
         - name: dpxdt-server
           image: g5search/dpxdt
           imagePullPolicy: Always
-          command: [ "bundle", "exec", "puma", "-C", "config/puma.rb" ]
           resources:
             requests:
-              memory: "1000Mi"
+              memory: "500Mi"
               cpu: "500m"
             limits:
-              memory: "1500Mi"
+              memory: "1000Mi"
               cpu: "1000m"
           env:
             - name: DB_HOST
@@ -58,3 +57,15 @@ spec:
                 secretKeyRef:
                   name: dpxdt
                   key: database-password
+        - name: nginx-proxy
+          image: g5search/nginx-ssl-proxy
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: TARGET_SERVICE
+              value: 127.0.0.1:5000
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "nginx", "-s", "quit" ]

@@ -57,6 +57,7 @@ mail = Mail(app)
 
 # Modules with handlers to register with the app
 from dpxdt.server import api
+from dpxdt.server import g5_api
 from dpxdt.server import auth
 from dpxdt.server import emails
 from dpxdt.server import frontend

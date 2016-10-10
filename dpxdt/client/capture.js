@@ -19,6 +19,21 @@
 var fs = require('fs');
 var system = require('system');
 
+// console.log = function(msg){
+//   fs.write("/tmp/phantom.log", msg + "\n", 'w');
+// }
+
+LazyLoaded = function() {
+  var llis = document.getElementsByClassName('lazy-load');
+  for(var lcv = 0; lcv < llis.length; lcv++){
+    imgElement = llis[lcv];
+    console.log("checking " + imgElement.getAttribute('src'));
+    if(!(imgElement.complete && imgElement.naturalHeight != 0)){
+      return false;
+    }
+  }
+  return true;
+}
 
 // Read and validate config.
 var configPath = null;
@@ -323,13 +338,31 @@ page.waitForReady = function(func) {
     }, 500);
 };
 
+page.LazyLoaded = function() {
+  return page.evaluate(function() {
+    var llis = document.getElementsByTagName('img');
+    for(var lcv = 0; lcv < llis.length; lcv++){
+      var imgElement = llis[lcv];
+      console.log("checking " + imgElement.getAttribute('src'));
+      if(!(typeof imgElement !== 'undefined' && typeof imgElement.complete !== 'undefined' && typeof imgElement.naturalHeight !== 'undefined' && imgElement.complete && imgElement.naturalHeight != 0)){
+        return false;
+      }
+    }
+    console.log("returning true");
+    return true;
+  });
+};
 
 // Kickoff the load!
 console.log('Opening page', config.targetUrl);
 page.open(config.targetUrl, function(status) {
+
     console.log('Finished loading page:', config.targetUrl,
                 'w/ status:', status);
 
+    while(!page.LazyLoaded()){
+      console.log('waiting for loading...');
+    };
     // Wait for the page to get ready, then inject CSS and JS.
     window.setTimeout(function() {
         page.waitForReady(page.doInject);

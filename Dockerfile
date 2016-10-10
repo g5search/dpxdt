@@ -12,7 +12,7 @@ RUN apt-get clean all
 #install phantomjs itself
 WORKDIR /phantomjs
 ENV PHANTOM_JS "phantomjs-1.9.8-linux-x86_64"
-RUN wget https://bitbucket.org/ariya/phantomjs/downloads/$PHANTOM_JS.tar.bz2
+RUN wget -U Mozilla https://bitbucket.org/ariya/phantomjs/downloads/$PHANTOM_JS.tar.bz2
 
 RUN tar xvjf $PHANTOM_JS.tar.bz2
 RUN mv $PHANTOM_JS /usr/local/share
@@ -22,16 +22,18 @@ WORKDIR /pip-install
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
 
-COPY ./* /dpxdt/
+COPY . /dpxdt/
 WORKDIR /dpxdt
 RUN virtualenv .
 RUN . bin/activate
 
-RUN pip install -r requirements.txt
-RUN pip install -e .
+WORKDIR /
+RUN pip install -r dpxdt/requirements.txt
+RUN pip install -e /dpxdt 
 
 #RUN echo 'server.db.create_all()' | ./run_shell.sh
 
 EXPOSE 5000
 
+WORKDIR /dpxdt
 CMD ./g5-run-dpxdt.sh > /var/log/dpxdt.log
