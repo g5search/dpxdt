@@ -366,5 +366,5 @@ page.open(config.targetUrl, function(status) {
     // Wait for the page to get ready, then inject CSS and JS.
     window.setTimeout(function() {
         page.waitForReady(page.doInject);
-    }, 500);
+    }, 5000);
 });
