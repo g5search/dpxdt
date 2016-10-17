@@ -19,21 +19,16 @@
 var fs = require('fs');
 var system = require('system');
 
-// console.log = function(msg){
-//   fs.write("/tmp/phantom.log", msg + "\n", 'w');
-// }
-
-LazyLoaded = function() {
-  var llis = document.getElementsByClassName('lazy-load');
-  for(var lcv = 0; lcv < llis.length; lcv++){
-    imgElement = llis[lcv];
-    console.log("checking " + imgElement.getAttribute('src'));
-    if(!(imgElement.complete && imgElement.naturalHeight != 0)){
-      return false;
-    }
-  }
-  return true;
+console.log = function(msg){
+  fs.write("/tmp/phantom.log", msg + "\n", 'w');
 }
+
+var resourceWait  = 300;
+var maxRenderWait = 10000;
+var url           = 'https://twitter.com/#!/nodejs';
+var count         = 0;
+var forcedRenderTimeout;
+var renderTimeout;
 
 // Read and validate config.
 var configPath = null;
@@ -259,6 +254,7 @@ page.onLoadFinished = function(status) {
 // Takes the screenshot and exits successfully.
 page.doScreenshot = function() {
     console.log('Taking the screenshot and saving to:', outputPath);
+    phantom.injectJs(system.env['INJECT_DIR'] + '/inject.js')
     page.render(outputPath);
     phantom.exit(0);
 };
@@ -340,18 +336,36 @@ page.waitForReady = function(func) {
 
 page.LazyLoaded = function() {
   return page.evaluate(function() {
+    var then = new Date();
     var llis = document.getElementsByTagName('img');
     for(var lcv = 0; lcv < llis.length; lcv++){
       var imgElement = llis[lcv];
-      console.log("checking " + imgElement.getAttribute('src'));
-      if(!(typeof imgElement !== 'undefined' && typeof imgElement.complete !== 'undefined' && typeof imgElement.naturalHeight !== 'undefined' && imgElement.complete && imgElement.naturalHeight != 0)){
-        return false;
+      if( !(typeof imgElement !== 'undefined') ){
+        if(
+            (typeof imgElement.complete !== 'undefined') ||
+            (typeof imgElement.naturalHeight !== 'undefined') ||
+            !(imgElement.complete && imgElement.naturalHeight != 0)
+          ){
+          return false;
+        }
+      }
+      //30 seconds has to be enough
+      if(new Date() - then > 10000){
+        console.log("TIMEOUT LAZY LOAD");
+        return true
       }
     }
     console.log("returning true");
     return true;
   });
 };
+
+page.realWait = function(time){
+  var then = new Date();
+  while(new Date() - then < time){
+    console.log("waiting...");
+  }
+}
 
 // Kickoff the load!
 console.log('Opening page', config.targetUrl);
@@ -360,11 +374,11 @@ page.open(config.targetUrl, function(status) {
     console.log('Finished loading page:', config.targetUrl,
                 'w/ status:', status);
 
-    while(!page.LazyLoaded()){
-      console.log('waiting for loading...');
-    };
     // Wait for the page to get ready, then inject CSS and JS.
     window.setTimeout(function() {
+        while(!page.LazyLoaded()){
+          console.log('waiting for loading...');
+        };
         page.waitForReady(page.doInject);
     }, 5000);
 });

@@ -11,7 +11,8 @@ RUN apt-get clean all
 
 #install phantomjs itself
 WORKDIR /phantomjs
-ENV PHANTOM_JS "phantomjs-1.9.8-linux-x86_64"
+#ENV PHANTOM_JS "phantomjs-1.9.8-linux-x86_64"
+ENV PHANTOM_JS "phantomjs-2.1.1-linux-x86_64"
 RUN wget -U Mozilla https://bitbucket.org/ariya/phantomjs/downloads/$PHANTOM_JS.tar.bz2
 
 RUN tar xvjf $PHANTOM_JS.tar.bz2
@@ -36,4 +37,4 @@ RUN pip install -e /dpxdt
 EXPOSE 5000
 
 WORKDIR /dpxdt
-CMD ./g5-run-dpxdt.sh > /var/log/dpxdt.log
+CMD ./g5-run-dpxdt.sh 

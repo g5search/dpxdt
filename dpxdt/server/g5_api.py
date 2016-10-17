@@ -78,13 +78,7 @@ Notes:
   not supported.
 """
 
-import datetime
-import hashlib
-import functools
-import json
-import logging
-import mimetypes
-import time
+import datetime, hashlib, functools, json, logging, mimetypes, time, os
 from datetime import datetime
 
 # Local libraries
@@ -112,8 +106,23 @@ from api import _enqueue_capture, _find_last_good_run
 import gflags
 FLAGS = gflags.FLAGS
 
-# def _create_initial_run
-#     return
+def pull_inject_code():
+
+    try:
+        if os.environ['GITHUB_TOKEN'] and os.environ['INJECT_DIR']:
+
+            if os.path.exists(os.environ['INJECT_DIR']):
+                cmd = "cd %s ; git pull https://%s@github.com/g5search/dpxdt-inject" % (os.environ['INJECT_DIR'], os.environ['GITHUB_TOKEN'])
+            else:
+                cmd = "git clone https://%s@github.com/g5search/dpxdt-inject %s" % \
+                (os.environ['GITHUB_TOKEN'], os.environ['INJECT_DIR'])
+
+            print cmd
+            os.system(cmd)
+    except:
+        return 0
+
+    return 1
 
 @app.route('/api/create_build', methods=['POST'])
 @utils.retryable_transaction()
@@ -156,154 +165,26 @@ def release_and_run():
 
     build = request.form.get('build', type=int)
     url = request.form.get('url', type=str)
-    #
+    depth = request.form.get('depth', default=1, type=int)
+
     utils.jsonify_assert(build, 'must supply a build')
     utils.jsonify_assert(url, 'must supply a url')
-    #
-    # datestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-    #
-    # build = models.Build.query.filter_by(id=build).first()
-    #
-    # #create a release
-    # release_name = request.form.get('release_name', default=datestr)
-    #
-    # release = models.Release(
-    #     name=release_name,
-    #     url=url,
-    #     number=1,
-    #     build_id=build.id)
-    #
-    # last_candidate = (
-    #     models.Release.query
-    #     .filter_by(build_id=build.id, name=release_name)
-    #     .order_by(models.Release.number.desc())
-    #     .first())
-    #
-    # if last_candidate:
-    #     release.number += last_candidate.number
-    #
-    #     if last_candidate.status == models.Release.PROCESSING:
-    #         canceled_task_count = work_queue.cancel(
-    #             release_id=last_candidate.id)
-    #         logging.info('Canceling %d tasks for previous attempt '
-    #                      'build_id=%r, release_name=%r, release_number=%d',
-    #                      canceled_task_count, build.id, last_candidate.name,
-    #                      last_candidate.number)
-    #         last_candidate.status = models.Release.BAD
-    #         db.session.add(last_candidate)
-    #
-    # db.session.add(release)
-    # db.session.commit()
-    #
-    # signals.release_updated_via_api.send(app, build=build, release=release)
-    #
-    # logging.info('Created release: build_id=%r, release_name=%r, url=%r, '
-    #              'release_number=%d', build.id, release.name,
-    #              url, release.number)
-    #
-    #
-    # #create a run or runs
-    # run = models.Run(
-    #         release_id=release.id,
-    #         name=datestr,
-    #         status=models.Run.DATA_PENDING)
-    #
-    # db.session.add(run)
-    # db.session.flush()
-    #
-    # # current_url = request.form.get('url', type=str)
-    # config_data = request.form.get('config', default='{}', type=str)
-    # # utils.jsonify_assert(current_url, 'url to capture required')
-    # # utils.jsonify_assert(config_data, 'config document required')
-    #
-    # config_artifact = _enqueue_capture(build, release, run, url, config_data)
-    #
-    # _, last_good_run = _find_last_good_run(build)
-    # if last_good_run:
-    #     run.ref_url = last_good_run.url
-    #     run.ref_image = last_good_run.image
-    #     run.ref_log = last_good_run.log
-    #     run.ref_config = last_good_run.config
-    #
-    # db.session.add(run)
-    # db.session.commit()
-    # signals.run_updated_via_api.send(app, build=build, release=release, run=run)
 
-#------
-
-    # ref_url = request.form.get('ref_url', type=str)
-    # ref_config_data = request.form.get('ref_config', type=str)
-    # utils.jsonify_assert(
-    #     bool(ref_url) == bool(ref_config_data),
-    #     'ref_url and ref_config must both be specified or not specified')
-
-    # if ref_url and ref_config_data:
-    #     ref_config_artifact = _enqueue_capture(
-    #         build, current_release, current_run, ref_url, ref_config_data,
-    #         baseline=True)
-    # else:
-
-    # last_good_release = (
-    #     models.Release.query
-    #     .filter_by(
-    #         build_id=build.id,
-    #         status=models.Release.GOOD)
-    #     .order_by(models.Release.created.desc())
-    #     .first())
-    #
-    # last_good_run = None
-    #
-    # if last_good_release:
-    #     logging.debug('Found last good release for: build_id=%r, '
-    #                   'release_name=%r, release_number=%d',
-    #                   build.id, last_good_release.name,
-    #                   last_good_release.number)
-    #     last_good_run = (
-    #         models.Run.query
-    #         .filter_by(release_id=last_good_release.id, name=run_name)
-    #         .first())
-    #     if last_good_run:
-    #         logging.debug('Found last good run for: build_id=%r, '
-    #                       'release_name=%r, release_number=%d, '
-    #                       'run_name=%r',
-    #                       build.id, last_good_release.name,
-    #                       last_good_release.number, last_good_run.name)
-    #
-    # return last_good_release, last_good_run
-    #
-    #
-    #
-    # _, last_good_run = _find_last_good_run(build)
-    # if last_good_run:
-    #     current_run.ref_url = last_good_run.url
-    #     current_run.ref_image = last_good_run.image
-    #     current_run.ref_log = last_good_run.log
-    #     current_run.ref_config = last_good_run.config
-
-    # db.session.add(current_run)
-    # db.session.commit()
-
-    # signals.run_updated_via_api.send(
-    #     app, build=build, release=release, run=current_run)
-
-    # call(["./run_site_diff.sh", "--upload_build_id=%i"%build_id, "--crawl_depth=0", start_url ])
-
-    # config_artifact = _enqueue_capture(
-    #     build_id, current_release, current_run, start_url, config_data)
-
-    FLAGS.crawl_depth = 1
+    FLAGS.crawl_depth = depth
     # FLAGS.pdiff_task_max_attempts = 2
     # FLAGS.pdiff_threads = 3
+
+    pull_inject_code()
 
     coordinator = workers.get_coordinator()
     fetch_worker.register(coordinator)
     coordinator.start()
-    
+
     sd = SiteDiff(
         start_url=url,
         ignore_prefixes=None,
         upload_build_id=build,
-        upload_release_name=None,
+        upload_release_name=url,
         heartbeat=workers.PrintWorkflow)
     sd.root = True
     #
@@ -312,56 +193,82 @@ def release_and_run():
     return flask.jsonify(
             success=True,
             )
-###
+### vvv Code that doesn't use the task, but doesn't crawl ###
 
-    # """Requests a new run for a release candidate."""
-    # build = g.build
-    # current_release, current_run = _get_or_create_run(build)
-    #
-    # current_url = request.form.get('url', type=str)
-    # config_data = request.form.get('config', default='{}', type=str)
-    # utils.jsonify_assert(current_url, 'url to capture required')
-    # utils.jsonify_assert(config_data, 'config document required')
-    #
-    # config_artifact = _enqueue_capture(
-    #     build, current_release, current_run, current_url, config_data)
-    #
-    # ref_url = request.form.get('ref_url', type=str)
-    # ref_config_data = request.form.get('ref_config', type=str)
-    # utils.jsonify_assert(
-    #     bool(ref_url) == bool(ref_config_data),
-    #     'ref_url and ref_config must both be specified or not specified')
-    #
-    # if ref_url and ref_config_data:
-    #     ref_config_artifact = _enqueue_capture(
-    #         build, current_release, current_run, ref_url, ref_config_data,
-    #         baseline=True)
-    # else:
-    #     _, last_good_run = _find_last_good_run(build)
-    #     if last_good_run:
-    #         current_run.ref_url = last_good_run.url
-    #         current_run.ref_image = last_good_run.image
-    #         current_run.ref_log = last_good_run.log
-    #         current_run.ref_config = last_good_run.config
-    #
-    # db.session.add(current_run)
-    # db.session.commit()
-    #
-    # signals.run_updated_via_api.send(
-    #     app, build=build, release=current_release, run=current_run)
-    #
-    # return flask.jsonify(
-    #     success=True,
-    #     build_id=build.id,
-    #     release_name=current_release.name,
-    #     release_number=current_release.number,
-    #     run_name=current_run.name,
-    #     url=current_run.url,
-    #     config=current_run.config,
-    #     ref_url=current_run.ref_url,
-    #     ref_config=current_run.ref_config)
+# build = request.form.get('build', type=int)
+# url = request.form.get('url', type=str)
+#
+# utils.jsonify_assert(build, 'must supply a build')
+# utils.jsonify_assert(url, 'must supply a url')
 
-
+# datestr = datetime.now().strftime("%Y%m%d-%H%M%S")
+#
+# build = models.Build.query.filter_by(id=build).first()
+#
+# #create a release
+# release_name = request.form.get('release_name', default=datestr)
+#
+# release = models.Release(
+#     name=release_name,
+#     url=url,
+#     number=1,
+#     build_id=build.id)
+#
+# last_candidate = (
+#     models.Release.query
+#     .filter_by(build_id=build.id, name=release_name)
+#     .order_by(models.Release.number.desc())
+#     .first())
+#
+# if last_candidate:
+#     release.number += last_candidate.number
+#
+#     if last_candidate.status == models.Release.PROCESSING:
+#         canceled_task_count = work_queue.cancel(
+#             release_id=last_candidate.id)
+#         logging.info('Canceling %d tasks for previous attempt '
+#                      'build_id=%r, release_name=%r, release_number=%d',
+#                      canceled_task_count, build.id, last_candidate.name,
+#                      last_candidate.number)
+#         last_candidate.status = models.Release.BAD
+#         db.session.add(last_candidate)
+#
+# db.session.add(release)
+# db.session.commit()
+#
+# signals.release_updated_via_api.send(app, build=build, release=release)
+#
+# logging.info('Created release: build_id=%r, release_name=%r, url=%r, '
+#              'release_number=%d', build.id, release.name,
+#              url, release.number)
+#
+#
+# #create a run or runs
+# run = models.Run(
+#         release_id=release.id,
+#         name=datestr,
+#         status=models.Run.DATA_PENDING)
+#
+# db.session.add(run)
+# db.session.flush()
+#
+# # current_url = request.form.get('url', type=str)
+# config_data = request.form.get('config', default='{}', type=str)
+# # utils.jsonify_assert(current_url, 'url to capture required')
+# # utils.jsonify_assert(config_data, 'config document required')
+#
+# config_artifact = _enqueue_capture(build, release, run, url, config_data)
+#
+# _, last_good_run = _find_last_good_run(build)
+# if last_good_run:
+#     run.ref_url = last_good_run.url
+#     run.ref_image = last_good_run.image
+#     run.ref_log = last_good_run.log
+#     run.ref_config = last_good_run.config
+#
+# db.session.add(run)
+# db.session.commit()
+# signals.run_updated_via_api.send(app, build=build, release=release, run=run)
 
 # @app.route('/api/flush_workers', methods=['POST'])
 # @utils.retryable_transaction()

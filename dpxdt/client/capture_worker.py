@@ -180,7 +180,6 @@ class DoCaptureQueueWorkflow(workers.WorkflowItem):
             try:
                 returncode = yield CaptureWorkflow(
                     log_path, config_path, image_path)
-                yield heartbeat('RETCODE: %s' % returncode)
             except (process_worker.TimeoutError, OSError), e:
                 failure_reason = str(e)
             else:

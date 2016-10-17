@@ -34,8 +34,8 @@ spec:
               memory: "500Mi"
               cpu: "500m"
             limits:
-              memory: "1000Mi"
-              cpu: "1000m"
+              memory: "1500Mi"
+              cpu: "1500m"
           env:
             - name: DB_HOST
               valueFrom:
@@ -57,6 +57,13 @@ spec:
                 secretKeyRef:
                   name: dpxdt
                   key: database-password
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: github-token
+            - name: INJECT_DIR
+              value: /dpxdt-inject
         - name: nginx-proxy
           image: g5search/nginx-ssl-proxy
           ports:
