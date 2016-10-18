@@ -163,16 +163,44 @@ def create_build():
 @utils.retryable_transaction()
 def release_and_run():
 
-    build = request.form.get('build', type=int)
-    url = request.form.get('url', type=str)
+    build = request.form.get('build', default=None, type=int)
+    url = request.form.get('url', default=None, type=str)
+    name = request.form.get('name', default=None, type=str)
     depth = request.form.get('depth', default=1, type=int)
 
-    utils.jsonify_assert(build, 'must supply a build')
-    utils.jsonify_assert(url, 'must supply a url')
+    #name supercedes build
+    if name:
+
+        msg = "Build determined via name: %s. " % name
+        bd = models.Build.query.filter_by(name=name).first()
+
+        if not bd:
+            return flask.jsonify(error="build by that name does not exist.")
+
+        build = bd.id
+
+    else:
+        msg = "Build id taken from passed arg: %s. " % build
+
+    #however we determined the build, make sure we have a url
+    if not url:
+
+        rel = models.Release.query.filter_by(build_id=build)\
+        .order_by(models.Release.created.desc()).first()
+
+        if not rel:
+            return flask.jsonify(error="no url provided and no previous releases to extrapolate from.")
+
+        url = rel.url
+        msg += "url determined via last release in the build: %s. " % url
+
+    else:
+        msg += "url taken from passed arg: %s. " % url
+
+    utils.jsonify_assert(build, 'must supply a build or a name')
+    utils.jsonify_assert(url, 'must supply a url or a name')
 
     FLAGS.crawl_depth = depth
-    # FLAGS.pdiff_task_max_attempts = 2
-    # FLAGS.pdiff_threads = 3
 
     pull_inject_code()
 
@@ -187,12 +215,16 @@ def release_and_run():
         upload_release_name=url,
         heartbeat=workers.PrintWorkflow)
     sd.root = True
-    #
+
     coordinator.input_queue.put(sd)
-    #
+
+    msg += "Job(s) started."
+
     return flask.jsonify(
             success=True,
+            msg=msg,
             )
+
 ### vvv Code that doesn't use the task, but doesn't crawl ###
 
 # build = request.form.get('build', type=int)
