@@ -1,0 +1,15 @@
+{
+  "host" : "dpxdt.g5marketingcloud.com",
+  "oauth" : {
+    "domain"        : "getg5.com",
+    "client-id"     : "598721767773-83tbvg1l0lde72ufpef56836dtahsf5k.apps.googleusercontent.com",
+    "client-secret" : "aYlJu2esHOvsDr0YKZ6akJ-q"
+  },
+  "use-strict-security-headers": true,
+  "routes" : [
+    {
+      "from" : "dpxdt.g5marketingcloud.com",
+      "to"   : "127.0.0.1:5000"
+    }
+  ]
+}

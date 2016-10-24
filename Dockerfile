@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM golang
 
 MAINTAINER G5 Engineering <engineering@getg5.com>
 
@@ -9,9 +9,16 @@ RUN apt-get install -y libfontconfig1 libfontconfig1-dev
 RUN apt-get install -y git python python-mysqldb imagemagick virtualenv curl wget
 RUN apt-get clean all
 
+#WORKDIR /go
+#RUN curl -O https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz
+#RUN tar -xvf go1.6.linux-amd64.tar.gz
+##RUN mv go /usr/local
+#RUN chmod a+x go
+#RUN go get github.com/kellegous/underpants
+RUN go get github.com/bitly/oauth2_proxy
+
 #install phantomjs itself
 WORKDIR /phantomjs
-#ENV PHANTOM_JS "phantomjs-1.9.8-linux-x86_64"
 ENV PHANTOM_JS "phantomjs-2.1.1-linux-x86_64"
 RUN wget -U Mozilla https://bitbucket.org/ariya/phantomjs/downloads/$PHANTOM_JS.tar.bz2
 

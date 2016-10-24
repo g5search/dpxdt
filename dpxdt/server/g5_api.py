@@ -124,22 +124,8 @@ def pull_inject_code():
 
     return 1
 
-@app.route('/api/create_build', methods=['POST'])
-@utils.retryable_transaction()
-def create_build():
 
-    build_name = request.form.get('name', type=str)
-    utils.jsonify_assert(build_name, 'supply a build name')
-
-    #check for another build by this name
-    build = db.session.query(models.Build).filter(models.Build.name == build_name).first()
-
-    if build:
-        return flask.jsonify(
-                success=False,
-                existing_build_id=build.id,
-                message="A build by that name already exists"
-                )
+def _create_build(build_name):
 
     build = models.Build(name=build_name)
     build.public = True
@@ -154,6 +140,31 @@ def create_build():
     logging.info('Created build via UI: build_id=%r, name=%r',
                  build.id, build.name)
 
+    return db.session.query(models.Build).filter(models.Build.name == build_name).first()
+
+@app.route('/api/create_build', methods=['POST'])
+@utils.retryable_transaction()
+def create_build():
+
+    passed_key = request.form.get('G5_DPXDT_API_KEY', default=None, type=str)
+    if passed_key != os.environ['G5_DPXDT_API_KEY']:
+        return flask.jsonify(error="invalid or missing API key")
+
+    build_name = request.form.get('name', type=str)
+    utils.jsonify_assert(build_name, 'supply a build name')
+
+    #check for another build by this name
+    build = db.session.query(models.Build).filter(models.Build.name == build_name).first()
+
+    if build:
+        return flask.jsonify(
+                success=False,
+                existing_build_id=build.id,
+                message="A build by that name already exists"
+                )
+
+    _create_build(build_name)
+
     return flask.jsonify(
             success=True,
             build_id=build.id,
@@ -162,6 +173,10 @@ def create_build():
 @app.route('/api/release_and_run', methods=['POST'])
 @utils.retryable_transaction()
 def release_and_run():
+
+    passed_key = request.form.get('G5_DPXDT_API_KEY', default=None, type=str)
+    if passed_key != os.environ['G5_DPXDT_API_KEY']:
+        return flask.jsonify(error="invalid or missing API key")
 
     build = request.form.get('build', default=None, type=int)
     url = request.form.get('url', default=None, type=str)
@@ -175,7 +190,9 @@ def release_and_run():
         bd = models.Build.query.filter_by(name=name).first()
 
         if not bd:
-            return flask.jsonify(error="build by that name does not exist.")
+            bd = _create_build(name)
+            msg += " Build did not exist, created it. "
+            # return flask.jsonify(error="build by that name does not exist.")
 
         build = bd.id
 

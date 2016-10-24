@@ -4,6 +4,13 @@ metadata:
   name: dpxdt-server
   labels:
     app: dpxdt
+  annotations:
+    dalton.getg5.com/application: |-
+      {
+        "imageTags": [
+          { "containerName": "dpxdt-server" }
+        ]
+      }
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -62,17 +69,47 @@ spec:
                 secretKeyRef:
                   name: third-party-tokens
                   key: github-token
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: oauth2-proxy-client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: oauth2-proxy-client-secret 
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: oauth2-proxy-cookie-secret 
+            - name: OAUTH2_PROXY_UPSTREAM
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: oauth2-proxy-upstream 
+            - name: OAUTH2_PROXY_EMAIL_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: third-party-tokens
+                  key: oauth2-proxy-email-domain
+            - name: G5_DPXDT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dpxdt
+                  key: g5-dpxdt-api-key
             - name: INJECT_DIR
               value: /dpxdt-inject
-        - name: nginx-proxy
-          image: g5search/nginx-ssl-proxy
-          ports:
-            - name: http
-              containerPort: 80
-          env:
-            - name: TARGET_SERVICE
-              value: 127.0.0.1:5000
-          lifecycle:
-            preStop:
-              exec:
-                command: [ "nginx", "-s", "quit" ]
+        #- name: nginx-proxy
+          #image: g5search/nginx-ssl-proxy
+          #ports:
+            #- name: http
+              #containerPort: 80
+          #env:
+            #- name: TARGET_SERVICE
+              #value: 127.0.0.1:5000
+          #lifecycle:
+            #preStop:
+              #exec:
+                #command: [ "nginx", "-s", "quit" ]
