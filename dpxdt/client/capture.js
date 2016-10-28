@@ -21,10 +21,10 @@ var system = require('system');
 
 console.log = function(msg){
   fs.write("/tmp/phantom.log", msg + "\n", 'w');
-}
+};
 
 var resourceWait  = 300;
-var maxRenderWait = 10000;
+var maxRenderWait = 30000;
 var url           = 'https://twitter.com/#!/nodejs';
 var count         = 0;
 var forcedRenderTimeout;
@@ -254,8 +254,14 @@ page.onLoadFinished = function(status) {
 // Takes the screenshot and exits successfully.
 page.doScreenshot = function() {
     console.log('Taking the screenshot and saving to:', outputPath);
-    phantom.injectJs(system.env['INJECT_DIR'] + '/inject.js')
-    page.render(outputPath);
+    phantom.injectJs(system.env['INJECT_DIR'] + '/inject.js');
+    console.log('starting timeout before render');
+
+    // window.setTimeout(function() {
+      console.log('timeout finsihed rendering');
+      page.render(outputPath);
+    // }, 5000);
+
     phantom.exit(0);
 };
 
@@ -292,16 +298,11 @@ page.doInject = function() {
             phantom.exit(1);
         }
     }
+    console.log('doinject done, waiting');
 
-    if (!didInject) {
-        page.doScreenshot();
-    } else {
-        // Wait for any injected CSS and JS to finish running, including
-        // asynchronous requests, then take a screenshot.
-        window.setTimeout(function() {
-            page.waitForReady(page.doScreenshot);
-        }, 500);
-    }
+    // setTimeout(function() {
+    page.waitForReady(page.doScreenshot);
+    // }, 2000);
 };
 
 
@@ -318,7 +319,7 @@ page.waitForReady = function(func) {
 
     var pending = totals[ResourceStatus.PENDING] || 0;
     if (!pending) {
-        console.log('No more resources are pending!');
+        console.log('No more resources are pending. get funcy!');
         func();
         return;
     } else {
@@ -329,56 +330,60 @@ page.waitForReady = function(func) {
         }
     }
 
-    window.setTimeout(function() {
+    setTimeout(function() {
         page.waitForReady(func);
     }, 500);
 };
 
-page.LazyLoaded = function() {
+page.isDone = function(){
   return page.evaluate(function() {
-    var then = new Date();
+
+    if(document.readyState != "complete"){
+      return false;
+    }
+
     var llis = document.getElementsByTagName('img');
+    var t_flag = true;
+
     for(var lcv = 0; lcv < llis.length; lcv++){
+
       var imgElement = llis[lcv];
-      if( !(typeof imgElement !== 'undefined') ){
-        if(
-            (typeof imgElement.complete !== 'undefined') ||
-            (typeof imgElement.naturalHeight !== 'undefined') ||
-            !(imgElement.complete && imgElement.naturalHeight != 0)
-          ){
-          return false;
-        }
-      }
-      //30 seconds has to be enough
-      if(new Date() - then > 10000){
-        console.log("TIMEOUT LAZY LOAD");
-        return true
+
+      if(
+        typeof imgElement == 'undefined' ||
+        typeof imgElement.complete == 'undefined' ||
+        typeof imgElement.naturalHeight == 'undefined' ||
+        !(imgElement.complete && imgElement.naturalHeight != 0)
+      ){
+        return false;
       }
     }
-    console.log("returning true");
+
+    if( document.getElementsByClassName('lazy-load').length !=
+        document.getElementsByClassName('lazy-load is-unveiled').length
+      ){
+      return false;
+    }
+
     return true;
   });
 };
 
-page.realWait = function(time){
-  var then = new Date();
-  while(new Date() - then < time){
-    console.log("waiting...");
-  }
+page.onLoadFinished = function(status){
+  //Check for completion every second
+  var iid = setInterval(function(){
+    console.log('interval run');
+    if(page.isDone()){
+      console.log('page done');
+      clearInterval(iid);
+      page.waitForReady(page.doInject);
+    }
+  }, 1000);
 }
 
 // Kickoff the load!
 console.log('Opening page', config.targetUrl);
+
 page.open(config.targetUrl, function(status) {
-
-    console.log('Finished loading page:', config.targetUrl,
-                'w/ status:', status);
-
-    // Wait for the page to get ready, then inject CSS and JS.
-    window.setTimeout(function() {
-        while(!page.LazyLoaded()){
-          console.log('waiting for loading...');
-        };
-        page.waitForReady(page.doInject);
-    }, 5000);
+  console.log('page opened');
 });

@@ -107,7 +107,7 @@ import gflags
 FLAGS = gflags.FLAGS
 
 def pull_inject_code():
-
+    # return 1
     try:
         if os.environ['GITHUB_TOKEN'] and os.environ['INJECT_DIR']:
 
